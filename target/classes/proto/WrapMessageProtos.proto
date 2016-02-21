@@ -1,0 +1,31 @@
+package proto;
+
+option java_package = "com.binaryleeward.foobar.protocol.protos";
+option java_outer_classname = "WrapMessageProtos";
+
+message LoginMessage {
+	required string userName = 1;
+	required string password = 2;
+}
+
+message SkillMessage {
+	required int32 skillId = 1;
+}
+
+message ErrorMessage {
+	required int32 code = 1;
+	required string text = 2;
+}
+
+message WrapMessage {
+	enum MessageType {
+		LoginMessage = 1; 
+		SkillMessage = 2;
+		ErrorMessage = 3;
+	}
+  	required MessageType messageType = 1;
+  	optional LoginMessage loginMessage = 2;
+  	optional SkillMessage skillMessage = 3;
+  	optional ErrorMessage errorMessage = 4;
+}
+
