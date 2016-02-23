@@ -3,9 +3,8 @@ package com.binaryleeward.foobar.service;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.annotation.Resource;
-
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.binaryleeward.foobar.exception.BaseException;
@@ -19,7 +18,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 @Service
 public class ProtobufMessageProxyService implements InitializingBean{
 	
-	@Resource(name="loginService")
+	@Autowired
 	private LoginService loginService;
 	
 	@SuppressWarnings("rawtypes")
@@ -29,10 +28,14 @@ public class ProtobufMessageProxyService implements InitializingBean{
 		messageProcessorMap.put(WrapMessage.MessageType.LoginMessage, loginService);
 	}
 	
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public WrapMessage process(WrapMessage wrapMsg) {
 		try {
-			return wrap(messageProcessorMap.get(wrapMsg.getMessageType()).process(parse(wrapMsg)));
+			MessageProcessService ps = messageProcessorMap.get(wrapMsg.getMessageType());
+			if(ps == null){
+				throw new BaseException(wrapMsg.getMessageType().toString() +" process service not init");
+			}
+			return wrap(ps.process(parse(wrapMsg)));
 		} catch (BaseException e) {
 			LogUtil.error(e);
 			return WrapMessage.newBuilder()
@@ -46,15 +49,18 @@ public class ProtobufMessageProxyService implements InitializingBean{
 	private Object parse(WrapMessage wrapMsg) throws BaseException{
 		Map<FieldDescriptor, Object> fields = wrapMsg.getAllFields();
 		for(Map.Entry<FieldDescriptor, Object> entry : fields.entrySet()){
-			if(wrapMsg.getMessageType().toString().equals(entry.getKey().getFullName())){
+			if(entry.getKey().getType() == FieldDescriptor.Type.MESSAGE && wrapMsg.getMessageType().toString().equals(entry.getKey().getMessageType().getName())){
 				return entry.getValue();
 			}
 		}
-		throw new BaseException();
+		throw new BaseException("parse msg error");
 	} 
 	
 	//wrap msg
 	private WrapMessage wrap(Object msg) throws BaseException{
+		if(msg == null){
+			return null;
+		}
 		Builder wm = WrapMessage.newBuilder();
 		wm.setMessageType(WrapMessage.MessageType.valueOf(msg.getClass().getSimpleName()));
 		boolean wrapSuccess = false;
@@ -66,7 +72,7 @@ public class ProtobufMessageProxyService implements InitializingBean{
 			}
 		}
 		if(!wrapSuccess){
-			throw new BaseException();
+			throw new BaseException("wrap msg error");
 		}
 		return wm.build();
 	}

@@ -1,5 +1,6 @@
 package com.binaryleeward.foobar.handler;
-
+import io.netty.channel.ChannelHandler.Sharable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.binaryleeward.foobar.protocol.protos.WrapMessageProtos.WrapMessage;
@@ -13,9 +14,11 @@ import io.netty.util.ReferenceCountUtil;
  * Handles a server-side channel.
  */
 @Component
+@Sharable
 public class ProtobufMessageHandler extends ChannelHandlerAdapter { // (1)
 	
-	private ProtobufMessageProxyService messageProxyService;
+	@Autowired
+	private ProtobufMessageProxyService protobufMessageProxyService;
 	
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) { // (2)
@@ -25,7 +28,10 @@ public class ProtobufMessageHandler extends ChannelHandlerAdapter { // (1)
 				return;
 			}
 			WrapMessage wrapMsg = (WrapMessage)msg;
-			ctx.writeAndFlush(messageProxyService.process(wrapMsg));
+			WrapMessage resultMsg = protobufMessageProxyService.process(wrapMsg);
+			if(resultMsg != null){
+				ctx.writeAndFlush(resultMsg);
+			}
 		} finally {
 			 ReferenceCountUtil.release(msg);
 		}

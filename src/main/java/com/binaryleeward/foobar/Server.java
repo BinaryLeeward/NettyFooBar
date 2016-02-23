@@ -1,8 +1,5 @@
 package com.binaryleeward.foobar;
 
-import com.binaryleeward.foobar.handler.ProtobufMessageHandler;
-import com.binaryleeward.foobar.protocol.protos.WrapMessageProtos.WrapMessage;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -16,13 +13,20 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.binaryleeward.foobar.handler.ProtobufMessageHandler;
+import com.binaryleeward.foobar.protocol.protos.WrapMessageProtos.WrapMessage;
+
+@Component
 public class Server {
-
-    private int port;
-
-    public Server(int port) {
-        this.port = port;
-    }
+	
+	@Autowired
+	private ProtobufMessageHandler protobufMessageHandler;
+	@Value("#{server['port']}")
+	private int port;
 
     public void run() throws Exception {
         EventLoopGroup bossGroup = new NioEventLoopGroup(); // (1)
@@ -38,7 +42,7 @@ public class Server {
                 	 ch.pipeline().addLast("protobufDecoder",new ProtobufDecoder(WrapMessage.getDefaultInstance()));
                 	 ch.pipeline().addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
                 	 ch.pipeline().addLast("protobufEncoder", new ProtobufEncoder());
-                	 ch.pipeline().addLast(new ProtobufMessageHandler());
+                	 ch.pipeline().addLast(protobufMessageHandler);
                  }
              })
              .option(ChannelOption.SO_BACKLOG, 128)          // (5)
@@ -56,14 +60,13 @@ public class Server {
             bossGroup.shutdownGracefully();
         }
     }
-
-    public static void main(String[] args) throws Exception {
-        int port;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
-        } else {
-            port = 9999;
-        }
-        new Server(port).run();
+    
+    public void start(){
+    	 int port = 9999;
+         try {
+			run();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
     }
 }
